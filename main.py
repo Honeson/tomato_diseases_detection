@@ -11,7 +11,7 @@ import numpy as np
 app = FastAPI()
 
 
-@app.get("/")
+@app.get("/", summary="Homepage", description="This endpoint is just a homepage ")
 async def read_root():
     return {"message": "Welcome to the tomato leaves viruses prediction!"}
 
@@ -31,23 +31,19 @@ def image_label_mapper(prediction):
     virus_names= sorted(virus_names)
     return virus_names[prediction]
 
-@app.get("/")
-async def predict(image: UploadFile = File(...)):
-    # Read and preprocess the image
-    img_bytes = await image.read()  # Read the image file as bytes
-    img = Image.open(BytesIO(img_bytes))  # Create a PIL image from the bytes
-    img = np.array(img)  # Convert the PIL image to a NumPy array
-    image = preprocess_image(img)
-
-
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):
     return JSONResponse(status_code=exc.status_code, content={"error": exc.detail})
 
 
-@app.post("/predict")
+@app.post("/predict", summary="Prediction Endpoint", description="Endpoint to predict the virus present in a tomato leaf image. This is the endpoint you need")
 async def predict(image: UploadFile = File(...)):
+    """
+    Make predictions on the provided tomato leaf image.
+
+    - **image**: Only image file will be accepted by this endpoint(e.g., JPEG, PNG,...).
+    """
 
     try:
         if not image:
