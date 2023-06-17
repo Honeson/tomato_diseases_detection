@@ -1,6 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 import tensorflow as tf
 from PIL import Image, UnidentifiedImageError
 from io import BytesIO
@@ -16,7 +16,17 @@ async def read_root():
     return {"message": "Welcome to the tomato leaves viruses prediction!"}
 
 
-model = tf.keras.models.load_model('ml_model/model.h5')
+model = tf.keras.models.load_model('ml_model/saved_model.h5')
+class_names = ['Tomato___Bacterial_spot',
+ 'Tomato___Early_blight',
+ 'Tomato___Late_blight',
+ 'Tomato___Leaf_Mold',
+ 'Tomato___Septoria_leaf_spot',
+ 'Tomato___Spider_mites Two-spotted_spider_mite',
+ 'Tomato___Target_Spot',
+ 'Tomato___Tomato_Yellow_Leaf_Curl_Virus',
+ 'Tomato___Tomato_mosaic_virus',
+ 'Tomato___healthy']
 
 def preprocess_image(image):
     #image = tf.image.decode_image(open(image, "rb").read())
@@ -30,6 +40,16 @@ def image_label_mapper(prediction):
     virus_names = ['Tomato Aspermy Virus', 'Tomato Bushy Stunt Virus', 'Tomato Mosaic Virus', 'Tomato Ring Spot Virus', 'Tomato Yellow Leaf Virus', 'Z Healthy Tomato']
     virus_names= sorted(virus_names)
     return virus_names[prediction]
+
+def predict_single_image(image, class_names, model):
+    # Create an ImageDataGenerator for a single image
+    data_generator = ImageDataGenerator(rescale=1./255)
+    image_generator = data_generator.flow(np.expand_dims(image, axis=0), batch_size=1)
+
+    predicted = model.predict(image_generator)
+    predicted_label = class_names[np.argmax(predicted)]
+
+    return predicted_label
 
 
 @app.exception_handler(HTTPException)
