@@ -17,6 +17,7 @@ async def read_root():
 
 
 model = tf.keras.models.load_model('ml_model/saved_model.h5')
+IMAGE_SIZE = (224,224)
 class_names = ['Tomato___Bacterial_spot',
  'Tomato___Early_blight',
  'Tomato___Late_blight',
@@ -28,28 +29,28 @@ class_names = ['Tomato___Bacterial_spot',
  'Tomato___Tomato_mosaic_virus',
  'Tomato___healthy']
 
-def preprocess_image(image):
-    #image = tf.image.decode_image(open(image, "rb").read())
-    image = tf.image.resize(image, (331, 331))
-    image = tf.image.convert_image_dtype(image, dtype=tf.float32)
-    image = image[tf.newaxis, ...]
+# def preprocess_image(image):
+#     #image = tf.image.decode_image(open(image, "rb").read())
+#     image = tf.image.resize(image, (331, 331))
+#     image = tf.image.convert_image_dtype(image, dtype=tf.float32)
+#     image = image[tf.newaxis, ...]
 
-    return image
+#     return image
 
-def image_label_mapper(prediction):
-    virus_names = ['Tomato Aspermy Virus', 'Tomato Bushy Stunt Virus', 'Tomato Mosaic Virus', 'Tomato Ring Spot Virus', 'Tomato Yellow Leaf Virus', 'Z Healthy Tomato']
-    virus_names= sorted(virus_names)
-    return virus_names[prediction]
+# def image_label_mapper(prediction):
+#     virus_names = ['Tomato Aspermy Virus', 'Tomato Bushy Stunt Virus', 'Tomato Mosaic Virus', 'Tomato Ring Spot Virus', 'Tomato Yellow Leaf Virus', 'Z Healthy Tomato']
+#     virus_names= sorted(virus_names)
+#     return virus_names[prediction]
 
-def predict_single_image(image, class_names, model):
-    # Create an ImageDataGenerator for a single image
-    data_generator = ImageDataGenerator(rescale=1./255)
-    image_generator = data_generator.flow(np.expand_dims(image, axis=0), batch_size=1)
+# def predict_single_image(image, class_names, model):
+#     # Create an ImageDataGenerator for a single image
+#     data_generator = ImageDataGenerator(rescale=1./255)
+#     image_generator = data_generator.flow(np.expand_dims(image, axis=0), batch_size=1)
 
-    predicted = model.predict(image_generator)
-    predicted_label = class_names[np.argmax(predicted)]
+#     predicted = model.predict(image_generator)
+#     predicted_label = class_names[np.argmax(predicted)]
 
-    return predicted_label
+#     return predicted_label
 
 
 @app.exception_handler(HTTPException)
@@ -71,14 +72,19 @@ async def predict(image: UploadFile = File(...)):
         # Read and preprocess the image
         img_bytes = await image.read()  # Read the image file as bytes
         img = Image.open(BytesIO(img_bytes))  # Create a PIL image from the bytes
-        img = np.array(img)  # Convert the PIL image to a NumPy array
-        image = preprocess_image(img)
+        #img = np.array(img)  # Convert the PIL image to a NumPy array
+        img = img.resize(IMAGE_SIZE)
+        data_generator = ImageDataGenerator(rescale=1./255)
+        image_generator = data_generator.flow(np.expand_dims(img, axis=0), batch_size=1)
         
         # Make predictions
-        prediction = np.argmax(model.predict(image))
-        prediction =image_label_mapper(prediction)
+        predicted = model.predict(image_generator)
+        predicted_label = class_names[np.argmax(predicted)]
 
-        return JSONResponse({"prediction": str(prediction)})
+        #prediction = np.argmax(model.predict(image))
+        #prediction =image_label_mapper(prediction)
+
+        return JSONResponse({"prediction": str(predicted_label)})
 
     except tf.errors.InvalidArgumentError as e:
         # Handle image processing or preprocessing errors
